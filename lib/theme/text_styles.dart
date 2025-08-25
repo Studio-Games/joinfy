@@ -8,7 +8,7 @@ class AppTextStyles {
   static const TextStyle headingLC = TextStyle(
     fontFamily: 'CodeProLC',
     fontSize: 30,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w600,
     color: AppColors.textPrimary, // precisa ser const no AppColors
   );
 
