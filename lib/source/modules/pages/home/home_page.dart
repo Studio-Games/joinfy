@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:joinfy/source/modules/pages/auth/login/login_page.dart';
 import '../../../components/map/map.dart';
+import 'add_event_modal.dart';
 import 'package:joinfy/utils/string_utils.dart';
 
 // Imports Firebase (assumindo que você já tem no projeto)
@@ -96,8 +97,34 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFFFF5800),
+        child: const Icon(Icons.add, color: Colors.white),
+        onPressed: () => _openAddEventModal(context),
+        tooltip: 'Adicionar Evento',
+      ),
     );
   }
+}
+
+void _openAddEventModal(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (context) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: AddEventModal(onEventAdded: () {
+        Navigator.of(context).pop();
+        // Pode adicionar feedback aqui
+      }),
+    ),
+  );
 }
 
 /// Botão redondo padrão
