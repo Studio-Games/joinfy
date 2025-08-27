@@ -169,13 +169,13 @@ class _LoginPageState extends State<LoginPage> {
         .copyWith(fontSize: 16, fontWeight: FontWeight.w500);
 
     return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: AbsorbPointer(
-          absorbing: _loading,
-          child: Column(
-            children: [
+      body: Stack(
+        children: [
+          SafeArea(
+            top: true,
+            bottom: false,
+            child: Column(
+              children: [
               Expanded(
                 child: SingleChildScrollView(
                   padding:
@@ -202,9 +202,14 @@ class _LoginPageState extends State<LoginPage> {
                         ),
 
                         // TÍTULO
-                        Text(
+                        const Text(
                           'Entrar',
-                          style: AppTextStyles.headingLC.copyWith(fontSize: 30),
+                          style: TextStyle(
+                              fontSize: 32,
+                              fontFamily: 'CodeProLC',
+                              fontWeight: FontWeight.w400,
+                              color: Colors.black
+                            ),
                         ),
                         const SizedBox(height: 15),
 
@@ -219,7 +224,7 @@ class _LoginPageState extends State<LoginPage> {
                           keyboardType: TextInputType.emailAddress,
                           autofillHints: const [AutofillHints.email],
                           decoration: _dec(
-                            'abc@email.com',
+                            'exemplo@email.com',
                             prefix: Padding(
                               padding: const EdgeInsets.all(12),
                               child: Image.asset('assets/icons/email.png',
@@ -317,26 +322,15 @@ class _LoginPageState extends State<LoginPage> {
                                 alignment: Alignment.center,
                                 widthFactor: appButtonWidthFactor(context),
                                 child: AppPrimaryButton(
-                                  label: _loading ? '' : 'ENTRAR',
+                                  label: 'ENTRAR',
                                   onPressed: _loading ? null : _onSubmit,
                                   fullWidth: false,
-                                  trailing: _loading
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    Colors.white),
-                                          ),
-                                        )
-                                      : Image.asset(
-                                          'assets/icons/arrow_circle.png',
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.contain,
-                                        ),
+                                  trailing: Image.asset(
+                                    'assets/icons/arrow_circle.png',
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                               ),
                               const AppOrTextDivider(verticalMargin: 25),
@@ -404,8 +398,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
 
                         const SizedBox(height: 12),
-                        if (_loading) const Text('Enviando...'),
-                        const SizedBox(height: 12),
                       ],
                     ),
                   ),
@@ -458,8 +450,54 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ],
+            ),
           ),
-        ),
+          
+          // Loading Overlay
+          if (_loading)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 40,
+                        height: 40,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFFFF5800),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Carregando...',
+                        style: AppTextStyles.body.copyWith(
+                          color: const Color(0xFF222222),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

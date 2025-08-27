@@ -363,7 +363,7 @@ class _SideMenuState extends State<_SideMenu> {
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: _brandBlue,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w400,
                             fontSize: 22,
                             fontFamily: 'CodeProLC',
                           ),
@@ -431,7 +431,7 @@ class _SideMenuState extends State<_SideMenu> {
                             child: const Text(
                               'Sair',
                               style: TextStyle(
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w400,
                                 fontSize: 16,
                                 fontFamily: 'CodeProLC',
                               ),

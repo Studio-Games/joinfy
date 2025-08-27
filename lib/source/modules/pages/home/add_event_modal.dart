@@ -130,8 +130,13 @@ class _AddEventModalState extends State<AddEventModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Adicionar Evento',
-                  style: Theme.of(context).textTheme.titleLarge),
+              const Text('Adicionar Evento',
+                  style: TextStyle(
+                              fontSize: 28,
+                              fontFamily: 'CodeProLC',
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black
+                            ),),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
