@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:joinfy/source/modules/events/events_page.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // gerado pelo FlutterFire
@@ -42,6 +43,7 @@ class MyApp extends StatelessWidget {
         '/login': (_) => const LoginPage(),
         '/register': (_) => const RegisterPage(),
         '/home_page': (_) => const HomePage(),
+        '/events_page': (_) => const EventsPage(),
       },
 
       // Fallback seguro
