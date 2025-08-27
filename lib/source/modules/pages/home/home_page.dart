@@ -23,6 +23,38 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
+  void _handleMenu(BuildContext context, String key) {
+    switch (key) {
+      case 'eventos':
+        Navigator.of(context).pushNamed('/events_page');
+        break;
+      case 'notificacoes':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Abrir Notificações')),
+        );
+        break;
+      case 'promocoes':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Abrir Promoções')),
+        );
+        break;
+      case 'indique':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Abrir Indique & Ganhe')),
+        );
+        break;
+      case 'configuracoes':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Abrir Configurações')),
+        );
+        break;
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Em breve')),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -32,7 +64,9 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: _SideMenu(), // <<-- removido const porque virou StatefulWidget
+      drawer: _SideMenu(
+        onSelect: (key) => _handleMenu(context, key),
+      ),
       backgroundColor: Colors.black,
       body: Stack(
         children: [
@@ -342,9 +376,9 @@ class _SideMenuState extends State<_SideMenu> {
                           child: Column(
                             children: [
                               _MenuTile(
-                                icon: Icons.history,
-                                label: 'Histórico de Pedidos',
-                                onTap: () => _tap(context, 'historico'),
+                                icon: Icons.event,
+                                label: 'Próximos Eventos',
+                                onTap: () => _tap(context, 'eventos'),
                               ),
                               _MenuTile(
                                 icon: Icons.notifications_none_rounded,

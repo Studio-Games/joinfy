@@ -30,6 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  flutter_svg: ^2.0.10+1
   google_maps_flutter: ^2.7.0
   geolocator: ^13.0.1
   # The following adds the Cupertino Icons font to your application.
@@ -74,25 +76,25 @@ flutter:
     # Família principal (arquivos "normais")
     - family: CodePro
       fonts:
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodePro.otf
           weight: 400
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Light.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProLight.otf
           weight: 300
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Bold.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProBold.otf
           weight: 700
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Black.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProBlack.otf
           weight: 900
 
     # Variante LC como outra família (evita ambiguidade de seleção)
     - family: CodeProLC
       fonts:
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro LC.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProLC.otf
           weight: 200
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Light LC.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProLightLC.otf
           weight: 100
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Bold LC.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProBoldLC.otf
           weight: 400
-        - asset: assets/fonts/code-pro-free-font-family/Code Pro Black LC.otf
+        - asset: assets/fonts/code-pro-free-font-family/CodeProBlackLC.otf
           weight: 900
 
   # To add assets to your application, add an assets section, like this:
