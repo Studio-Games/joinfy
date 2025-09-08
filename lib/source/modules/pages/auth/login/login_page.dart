@@ -218,6 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _emailCtrl,
                           style: _fieldStyle(context).copyWith(
                             color: Colors.black,
+                            fontWeight: FontWeight.w400,
                             fontSize: 16,
                           ),
                           textInputAction: TextInputAction.next,
@@ -239,6 +240,7 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           style: _fieldStyle(context).copyWith(
                             color: Colors.black,
+                            fontWeight: FontWeight.w400,
                             fontSize: 16,
                           ),
                           controller: _passwordCtrl,

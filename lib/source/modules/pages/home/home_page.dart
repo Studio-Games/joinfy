@@ -55,11 +55,18 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Key _mapKey = UniqueKey();
+
+  void _onEventAdded() {
+    setState(() {
+      _mapKey = UniqueKey();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
 
-    // Quase colado no topo, mas respeitando o notch/status bar
     final double topBarY = mq.viewPadding.top + 4;
 
     return Scaffold(
@@ -70,14 +77,12 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          const MapBackground(),
+          MapBackground(key: _mapKey),
 
-          // Camada de UI sobre o mapa
           SafeArea(
-            top: false, // não adiciona padding no topo
+            top: false,
             child: Stack(
               children: [
-                // ===== Botão redondo: MENU (esquerda) =====
                 Positioned(
                   left: 16,
                   top: topBarY,
@@ -90,8 +95,6 @@ class _HomePageState extends State<HomePage> {
                     iconSize: 28,
                   ),
                 ),
-
-                // ===== Botão redondo: PESQUISA (direita) =====
                 Positioned(
                   right: 16,
                   top: topBarY,
@@ -109,7 +112,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
 
-                // ===== Faixa superior com "opções deslizantes" (chips/cards pequenos) =====
                 Positioned(
                   left: 0,
                   right: 0,
@@ -135,14 +137,14 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFFFF5800),
         child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () => _openAddEventModal(context),
+        onPressed: () => _openAddEventModal(context, _onEventAdded),
         tooltip: 'Adicionar Evento',
       ),
     );
   }
 }
 
-void _openAddEventModal(BuildContext context) {
+void _openAddEventModal(BuildContext context, VoidCallback? onEventAdded) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -155,13 +157,12 @@ void _openAddEventModal(BuildContext context) {
       ),
       child: AddEventModal(onEventAdded: () {
         Navigator.of(context).pop();
-        // Pode adicionar feedback aqui
+        if (onEventAdded != null) onEventAdded();
       }),
     ),
   );
 }
 
-/// Botão redondo padrão
 class _RoundIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
@@ -169,10 +170,7 @@ class _RoundIconButton extends StatelessWidget {
   final Color bgColor;
   final Color iconColor;
 
-  /// diâmetro total do botão (largura = altura)
   final double size;
-
-  /// tamanho do ícone dentro do botão
   final double iconSize;
 
   const _RoundIconButton({
@@ -181,8 +179,8 @@ class _RoundIconButton extends StatelessWidget {
     this.tooltip,
     this.bgColor = Colors.white,
     this.iconColor = const Color(0xFFFF5800),
-    this.size = 48, // padrão
-    this.iconSize = 24, // padrão
+    this.size = 48,
+    this.iconSize = 24,
     super.key,
   });
 
@@ -552,11 +550,6 @@ class MapBackground extends StatelessWidget {
   }
 }
 
-// =============================
-// Quick Actions (chips/cards)
-// =============================
-
-/// Agora cada ação recebe o caminho do ícone local (asset)
 class _QuickActionItem {
   final String assetPath;
   final String label;
