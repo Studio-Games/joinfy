@@ -133,7 +133,7 @@ class _AddEventModalState extends State<AddEventModal> {
               const Text('Adicionar Evento',
                   style: TextStyle(
                               fontSize: 28,
-                              fontFamily: 'CodeProLC',
+                              fontFamily: 'CodePro',
                               fontWeight: FontWeight.w600,
                               color: Colors.black
                             ),),
