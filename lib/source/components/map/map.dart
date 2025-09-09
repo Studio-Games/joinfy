@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import '../event_details_modal.dart';
+import '../../../utils/event_id_utils.dart';
 
 class MapaPage extends StatefulWidget {
   const MapaPage({super.key});
@@ -25,6 +27,9 @@ class _MapaPageState extends State<MapaPage> {
   BitmapDescriptor? _iconMusica;
   BitmapDescriptor? _iconComida;
 
+  // Armazenar os dados dos eventos para poder acessar no clique
+  Map<String, Map<String, dynamic>> _eventosData = {};
+
   Future<void> _loadIcons() async {
     final config = const ImageConfiguration(size: Size(48, 48));
     _iconLazer = await BitmapDescriptor.fromAssetImage(
@@ -47,7 +52,14 @@ class _MapaPageState extends State<MapaPage> {
     super.initState();
     _loadIcons();
     _definirLocalizacaoInicial();
-    _buscarEventos();
+    _initializeEvents();
+  }
+
+  Future<void> _initializeEvents() async {
+    // Primeiro, garantir que todos os eventos têm IDs
+    await addMissingEventIds();
+    // Depois buscar os eventos
+    await _buscarEventos();
   }
 
   Future<void> _definirLocalizacaoInicial() async {
@@ -85,9 +97,16 @@ class _MapaPageState extends State<MapaPage> {
         infoWindow: InfoWindow(title: 'Centro de SP'),
       ),
     };
+
+    // Limpar dados antigos
+    _eventosData.clear();
+
     for (var doc in snapshot.docs) {
       final data = doc.data();
       if (data['latitude'] != null && data['longitude'] != null) {
+        // Armazenar os dados do evento
+        _eventosData[doc.id] = data;
+
         BitmapDescriptor icon;
         switch (data['type']) {
           case 'lazer':
@@ -108,6 +127,7 @@ class _MapaPageState extends State<MapaPage> {
             position: LatLng(data['latitude'], data['longitude']),
             infoWindow: InfoWindow(title: data['name'] ?? 'Evento'),
             icon: icon,
+            onTap: () => _onMarkerTap(doc.id),
           ),
         );
       }
@@ -115,6 +135,13 @@ class _MapaPageState extends State<MapaPage> {
     setState(() {
       _marcadores = marcadores;
     });
+  }
+
+  void _onMarkerTap(String eventId) {
+    final eventData = _eventosData[eventId];
+    if (eventData != null) {
+      showEventDetailsModal(context, eventData);
+    }
   }
 
   @override
