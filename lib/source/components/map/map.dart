@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -5,6 +8,9 @@ import 'package:geolocator/geolocator.dart';
 import '../event_details_modal.dart';
 import '../../../utils/event_id_utils.dart';
 
+  Map<String, dynamic>? _eventoSelecionado;
+  double _modalOffsetY = 0;
+  bool _isClosing = false;
 class MapaPage extends StatefulWidget {
   const MapaPage({super.key});
 
@@ -13,15 +19,69 @@ class MapaPage extends StatefulWidget {
 }
 
 class _MapaPageState extends State<MapaPage> {
+  Timer? _pulseLoadingTimer;
+  int _pulseLoadingIndex = 0;
+  Timer? _loadingTimer;
+  int _loadingRouteIndex = 0;
+  List<LatLng> _loadingRoutePoints = [];
+  Timer? _pulseTimer;
+  bool _showPulse = false;
+  List<LatLng> _lastRoutePoints = [];
+  List<LatLng> _decodePolyline(String polyline) {
+  final List<LatLng> route = [];
+  int index = 0;
+  int latitude = 0;
+  int longitude = 0;
+
+  while (index < polyline.length) {
+    int shift = 0;
+    int result = 0;
+    int byte;
+
+    do {
+      byte = polyline.codeUnitAt(index++) - 63;
+      result |= (byte & 0x1F) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    int deltaLat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    latitude += deltaLat;
+
+    shift = 0;
+    result = 0;
+    do {
+      byte = polyline.codeUnitAt(index++) - 63;
+      result |= (byte & 0x1F) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+    int deltaLng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
+    longitude += deltaLng;
+
+    route.add(LatLng(latitude / 1e5, longitude / 1e5));
+  }
+  return route;
+}
+
+  final String _googleApiKey = 'AIzaSyBo41Vvwpnqnn0ctCZuJeZkg9mpHIyVyBI';
+  Future<void> _abrirRotaGoogleMaps() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      final destinoLat = _eventoSelecionado?["latitude"];
+      final destinoLng = _eventoSelecionado?["longitude"];
+      if (destinoLat != null && destinoLng != null) {
+        final url =
+            'https://www.google.com/maps/dir/?api=1&origin=${pos.latitude},${pos.longitude}&destination=$destinoLat,$destinoLng&travelmode=driving';
+  await launchUrl(Uri.parse(url));
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print(e);
+      }
+    }
+  }
   GoogleMapController? _controller;
   CameraPosition? _inicial;
-  Set<Marker> _marcadores = {
-    const Marker(
-      markerId: MarkerId('centro-sp'),
-      position: LatLng(-23.55052, -46.63331),
-      infoWindow: InfoWindow(title: 'Centro de SP'),
-    ),
-  };
+  Set<Marker> _marcadores = {};
+  Set<Polyline> _polylines = {};
 
   BitmapDescriptor? _iconLazer;
   BitmapDescriptor? _iconMusica;
@@ -31,7 +91,7 @@ class _MapaPageState extends State<MapaPage> {
   Map<String, Map<String, dynamic>> _eventosData = {};
 
   Future<void> _loadIcons() async {
-    final config = const ImageConfiguration(size: Size(48, 48));
+    const config = ImageConfiguration(size: Size(48, 48));
     _iconLazer = await BitmapDescriptor.fromAssetImage(
       config,
       'assets/icons/lazer-icon.png',
@@ -44,7 +104,7 @@ class _MapaPageState extends State<MapaPage> {
       config,
       'assets/icons/food-icon.png',
     );
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   @override
@@ -66,24 +126,28 @@ class _MapaPageState extends State<MapaPage> {
     try {
       await Geolocator.requestPermission();
       final pos = await Geolocator.getCurrentPosition();
-      setState(() {
-        _inicial = CameraPosition(
-          target: LatLng(pos.latitude, pos.longitude),
-          zoom: 14,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _inicial = CameraPosition(
+            target: LatLng(pos.latitude, pos.longitude),
+            zoom: 14,
+          );
+        });
+      }
       if (_controller != null) {
         _controller!.animateCamera(CameraUpdate.newLatLng(
           LatLng(pos.latitude, pos.longitude),
         ));
       }
     } catch (e) {
-      setState(() {
-        _inicial = CameraPosition(
-          target: LatLng(-23.55052, -46.63331),
-          zoom: 12,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _inicial = const CameraPosition(
+            target: LatLng(-23.55052, -46.63331),
+            zoom: 12,
+          );
+        });
+      }
     }
   }
 
@@ -125,7 +189,6 @@ class _MapaPageState extends State<MapaPage> {
           Marker(
             markerId: MarkerId(doc.id),
             position: LatLng(data['latitude'], data['longitude']),
-            infoWindow: InfoWindow(title: data['name'] ?? 'Evento'),
             icon: icon,
             onTap: () => _onMarkerTap(doc.id),
           ),
@@ -146,20 +209,184 @@ class _MapaPageState extends State<MapaPage> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
     return Scaffold(
-      body: _inicial == null
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-              initialCameraPosition: _inicial!,
-              onMapCreated: (c) => _controller = c,
-              markers: _marcadores,
-              myLocationEnabled:
-                  true, // Mostra o ponto azul (precisa permissão)
-              myLocationButtonEnabled: true,
-              zoomControlsEnabled: false,
-              compassEnabled: true,
-              mapType: MapType.normal,
+      body: Stack(
+        children: [
+          _inicial == null
+              ? const Center(child: CircularProgressIndicator())
+              : GoogleMap(
+                          initialCameraPosition: _inicial!,
+                          onMapCreated: (c) {
+                            _controller = c;
+                            _setMapStyle(context);
+                          },
+                          markers: _marcadores,
+                          polylines: _polylines,
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: true,
+                          zoomControlsEnabled: false,
+                          zoomGesturesEnabled: true,
+                          mapToolbarEnabled: false,
+                        ),
+          if (_eventoSelecionado != null)
+            GestureDetector(
+              onTap: _closeEventModal,
+              child: Container(
+                color: Colors.black.withOpacity(0.2),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: mq.size.width * 0.02,
+                      bottom: 20,
+                      child: GestureDetector(
+                        onVerticalDragUpdate: (details) {
+                          setState(() {
+                            _modalOffsetY += details.delta.dy;
+                          });
+                        },
+                        onVerticalDragEnd: (details) {
+                          if (_modalOffsetY > 40) {
+                            _closeEventModal();
+                          } else {
+                            setState(() {
+                              _modalOffsetY = 0;
+                            });
+                          }
+                        },
+                        child: AnimatedSlide(
+                          offset: Offset(0, _isClosing ? 1 : (_modalOffsetY / 160).clamp(0, 1) + _modalSlideOffset),
+                          duration: const Duration(milliseconds: 350),
+                          curve: Curves.easeOut,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: Container(
+                              width: mq.size.width * 0.96,
+                              height: 230,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(32),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 12,
+                                    offset: Offset(0, -2),
+                                  ),
+                                ],
+                              ),
+                              child: Stack(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Informações
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                _eventoSelecionado!['name'] ?? 'Evento',
+                                                style: const TextStyle(
+                                                  fontFamily: 'CodeProLC',
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.w400,
+                                                  color: Color(0xFF23234A),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    (_eventoSelecionado!['rating']?.toString() ?? '4,0'),
+                                                    style: const TextStyle(fontSize: 15, color: Color(0xFF23234A)),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Row(
+                                                    children: List.generate(5, (i) {
+                                                      double rating = double.tryParse(_eventoSelecionado!['rating']?.toString() ?? '4.0') ?? 4.0;
+                                                      return Icon(
+                                                        i < rating ? Icons.star : Icons.star_border,
+                                                        size: 18,
+                                                        color: Color(0xFF23234A),
+                                                      );
+                                                    }),
+                                                  ),
+                                                ],
+                                              ),
+                                              Text(
+                                                _eventoSelecionado!['type'] ?? 'Restaurante',
+                                                style: const TextStyle(fontFamily: 'CodeProLC', fontWeight: FontWeight.w400, fontSize: 15, color: Color(0xFF23234A)),
+                                              ),
+                                              Row(
+                                                children: [
+                                                  const Text(
+                                                    'Aberto',
+                                                    style: TextStyle(fontFamily: 'CodeProLC', fontSize: 15, color: Color(0xFF2ED47A), fontWeight: FontWeight.w400),
+                                                  ),
+                                                  const Text(' • ', style: TextStyle(fontSize: 15, color: Color(0xFF23234A))),
+                                                  Text(
+                                                    'Fecha às ${_eventoSelecionado!['closeTime'] ?? '23:30'}',
+                                                    style: const TextStyle(fontFamily: 'CodeProLC', fontSize: 15, color: Color(0xFF23234A)),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 16),
+                                              SizedBox(
+                                                width: 180,
+                                                height: 48,
+                                                child: ElevatedButton.icon(
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: const Color(0xFFFF5800),
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(24),
+                                                    ),
+                                                  ),
+                                                  icon: const Icon(Icons.navigation, color: Colors.white),
+                                                  label: const Text('Ir agora', style: TextStyle(fontFamily: 'CodeProLC', fontSize: 16, color: Colors.white)),
+                                                  onPressed: _abrirRotaGoogleMaps,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Imagem
+                                        if (_eventoSelecionado!['imageUrl'] != null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 36),
+                                            child: ClipRRect(
+                                              borderRadius: BorderRadius.circular(16),
+                                              child: Image.network(
+                                                _eventoSelecionado!['imageUrl'],
+                                                width: 120,
+                                                height: 120,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -2,
+                                    left: (mq.size.width * 0.9) / 2 - 16,
+                                    child: const Icon(Icons.keyboard_arrow_up, size: 32, color: Color(0xFF23234A)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+        ],
+      ),
     );
   }
 }
