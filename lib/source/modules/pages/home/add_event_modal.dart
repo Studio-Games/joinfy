@@ -60,7 +60,7 @@ class _AddEventModalState extends State<AddEventModal> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Usuário não logado');
-      await FirebaseFirestore.instance.collection('events').add({
+      final docRef = await FirebaseFirestore.instance.collection('events').add({
         'name': _nameController.text.trim(),
         'type': _selectedType,
         'location': _selectedAddress,
@@ -70,6 +70,11 @@ class _AddEventModalState extends State<AddEventModal> {
         'date': _selectedDate,
         'userId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Atualizar o documento com seu próprio ID
+      await docRef.update({
+        'id': docRef.id,
       });
       widget.onEventAdded();
     } catch (e) {
@@ -130,13 +135,14 @@ class _AddEventModalState extends State<AddEventModal> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Adicionar Evento',
-                  style: TextStyle(
-                              fontSize: 28,
-                              fontFamily: 'CodePro',
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black
-                            ),),
+              const Text(
+                'Adicionar Evento',
+                style: TextStyle(
+                    fontSize: 28,
+                    fontFamily: 'CodeProLC',
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black),
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,

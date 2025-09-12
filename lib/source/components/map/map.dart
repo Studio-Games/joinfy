@@ -5,9 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../event_details_modal.dart';
+import '../../../utils/event_id_utils.dart';
 
   Map<String, dynamic>? _eventoSelecionado;
   double _modalOffsetY = 0;
@@ -88,7 +87,8 @@ class _MapaPageState extends State<MapaPage> {
   BitmapDescriptor? _iconMusica;
   BitmapDescriptor? _iconComida;
 
-  double _modalSlideOffset = 1;
+  // Armazenar os dados dos eventos para poder acessar no clique
+  Map<String, Map<String, dynamic>> _eventosData = {};
 
   Future<void> _loadIcons() async {
     const config = ImageConfiguration(size: Size(48, 48));
@@ -112,7 +112,14 @@ class _MapaPageState extends State<MapaPage> {
     super.initState();
     _loadIcons();
     _definirLocalizacaoInicial();
-    _buscarEventos();
+    _initializeEvents();
+  }
+
+  Future<void> _initializeEvents() async {
+    // Primeiro, garantir que todos os eventos têm IDs
+    await addMissingEventIds();
+    // Depois buscar os eventos
+    await _buscarEventos();
   }
 
   Future<void> _definirLocalizacaoInicial() async {
@@ -147,10 +154,23 @@ class _MapaPageState extends State<MapaPage> {
   Future<void> _buscarEventos() async {
     final snapshot =
         await FirebaseFirestore.instance.collection('events').get();
-    final marcadores = <Marker>{};
+    final marcadores = <Marker>{
+      const Marker(
+        markerId: MarkerId('centro-sp'),
+        position: LatLng(-23.55052, -46.63331),
+        infoWindow: InfoWindow(title: 'Centro de SP'),
+      ),
+    };
+
+    // Limpar dados antigos
+    _eventosData.clear();
+
     for (var doc in snapshot.docs) {
       final data = doc.data();
       if (data['latitude'] != null && data['longitude'] != null) {
+        // Armazenar os dados do evento
+        _eventosData[doc.id] = data;
+
         BitmapDescriptor icon;
         switch (data['type']) {
           case 'lazer':
@@ -170,151 +190,21 @@ class _MapaPageState extends State<MapaPage> {
             markerId: MarkerId(doc.id),
             position: LatLng(data['latitude'], data['longitude']),
             icon: icon,
-            onTap: () async {
-              if (mounted) {
-                setState(() {
-                  _eventoSelecionado = data;
-                  _modalSlideOffset = 1; // Começa fora da tela
-                });
-                Future.delayed(const Duration(milliseconds: 10), () {
-                  if (mounted) {
-                    setState(() {
-                      _modalSlideOffset = 0; // Anima para dentro
-                    });
-                  }
-                });
-                // Traçar linha real usando Directions API
-                try {
-                  final pos = await Geolocator.getCurrentPosition();
-                  final destinoLat = data["latitude"];
-                  final destinoLng = data["longitude"];
-                  if (destinoLat != null && destinoLng != null) {
-                    final url =
-                        'https://maps.googleapis.com/maps/api/directions/json?origin=${pos.latitude},${pos.longitude}&destination=$destinoLat,$destinoLng&key=$_googleApiKey&mode=driving';
-                    final response = await http.get(Uri.parse(url));
-                    if (response.statusCode == 200) {
-                      final json = jsonDecode(response.body);
-                      final points = _decodePolyline(
-                        json["routes"][0]["overview_polyline"]["points"],
-                      );
-                      _lastRoutePoints = points;
-                      _loadingRoutePoints = points;
-                      _loadingRouteIndex = 1;
-                      _loadingTimer?.cancel();
-                      // Duração total da animação (em ms)
-                      const totalDuration = 2000;
-                      final stepDuration = (totalDuration / points.length).clamp(10, 100).toInt();
-                      _loadingTimer = Timer.periodic(Duration(milliseconds: stepDuration), (timer) {
-                        if (_loadingRouteIndex < points.length) {
-                          setState(() {
-                            final polylineMain = Polyline(
-                              polylineId: const PolylineId('rota_usuario_evento'),
-                              color: const Color(0xFFFF5800),
-                              width: 6,
-                              points: points.sublist(0, _loadingRouteIndex),
-                            );
-                            _polylines = {polylineMain};
-                            _loadingRouteIndex++;
-                          });
-                        } else {
-                          setState(() {
-                            final polylineMain = Polyline(
-                              polylineId: const PolylineId('rota_usuario_evento'),
-                              color: const Color(0xFFFF5800),
-                              width: 4,
-                              points: points,
-                            );
-                            final polylinePulse = Polyline(
-                              polylineId: const PolylineId('rota_usuario_pulse'),
-                              color: const Color.fromARGB(255, 255, 200, 170),
-                              width: 2,
-                              points: points,
-                              visible: _showPulse,
-                            );
-                            _polylines = {polylineMain, polylinePulse};
-                          });
-                          timer.cancel();
-                          // Inicia o pulso normalmente
-                          _pulseLoadingTimer?.cancel();
-                          void startPulseLoading() {
-                            _pulseLoadingIndex = 1;
-                            final points = _lastRoutePoints;
-                            const pulseDuration = 1200; // ms
-                            final stepDuration = (pulseDuration / points.length).clamp(10, 80).toInt();
-                            _pulseLoadingTimer = Timer.periodic(Duration(milliseconds: stepDuration), (timer) {
-                              if (_pulseLoadingIndex < points.length) {
-                                setState(() {
-                                  final polylineMain = Polyline(
-                                    polylineId: const PolylineId('rota_usuario_evento'),
-                                    color: const Color(0xFFFF5800),
-                                    width: 4,
-                                    points: points,
-                                  );
-                                  final polylinePulse = Polyline(
-                                    polylineId: const PolylineId('rota_usuario_pulse'),
-                                    color: const Color.fromARGB(255, 255, 200, 170),
-                                    width: 2,
-                                    points: points.sublist(0, _pulseLoadingIndex),
-                                    visible: true,
-                                  );
-                                  _polylines = {polylineMain, polylinePulse};
-                                  _pulseLoadingIndex++;
-                                });
-                              } else {
-                                timer.cancel();
-                                Future.delayed(const Duration(seconds: 3), () {
-                                  if (mounted) startPulseLoading();
-                                });
-                              }
-                            });
-                          }
-                          startPulseLoading();
-                        }
-                      });
-                    }
-                  }
-                } catch (e) {
-                  // ignore
-                }
-              }
-            },
+            onTap: () => _onMarkerTap(doc.id),
           ),
         );
       }
     }
-    if (mounted) {
-      setState(() {
-        _marcadores = marcadores;
-      });
-    }
-  }
-
-  void _closeEventModal() {
-  _pulseLoadingTimer?.cancel();
-  _loadingTimer?.cancel();
-  _pulseTimer?.cancel();
-  _showPulse = false;
-    if (mounted) {
-      setState(() {
-        _isClosing = true;
-        _modalSlideOffset = 1;
-        _polylines = {};
-      });
-    }
-    Future.delayed(const Duration(milliseconds: 250), () {
-      if (mounted) {
-        setState(() {
-          _eventoSelecionado = null;
-          _modalOffsetY = 0;
-          _isClosing = false;
-        });
-      }
+    setState(() {
+      _marcadores = marcadores;
     });
   }
 
-  Future<void> _setMapStyle(BuildContext context) async {
-    final style = await DefaultAssetBundle.of(context).loadString('assets/map/map_style.json');
-    _controller?.setMapStyle(style);
+  void _onMarkerTap(String eventId) {
+    final eventData = _eventosData[eventId];
+    if (eventData != null) {
+      showEventDetailsModal(context, eventData);
+    }
   }
 
   @override
